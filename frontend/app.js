@@ -11,6 +11,11 @@ const productsGrid = document.getElementById('productsGrid');
 const resultsCount = document.getElementById('resultsCount');
 const loader = document.getElementById('loader');
 
+// Mobile filter elements
+const filterSidebar = document.getElementById('filterSidebar');
+const mobileFilterBtn = document.getElementById('mobileFilterBtn');
+const closeFilterBtn = document.getElementById('closeFilterBtn');
+
 // Formatting utilities
 const formatPKR = (amount) => {
     return 'Rs. ' + Number(amount).toLocaleString('en-PK', {
@@ -92,7 +97,28 @@ function displayProducts(data) {
 }
 
 // Event Listeners
-searchBtn.addEventListener('click', fetchProducts);
+searchBtn.addEventListener('click', () => {
+    fetchProducts();
+    // Close sidebar on mobile after applying filters
+    filterSidebar.classList.remove('active');
+});
+
+// Mobile filter toggles
+if (mobileFilterBtn && closeFilterBtn) {
+    mobileFilterBtn.addEventListener('click', () => {
+        filterSidebar.classList.add('active');
+    });
+
+    closeFilterBtn.addEventListener('click', () => {
+        filterSidebar.classList.remove('active');
+    });
+
+    filterSidebar.addEventListener('click', (e) => {
+        if (e.target === filterSidebar) {
+            filterSidebar.classList.remove('active');
+        }
+    });
+}
 
 // Enable "Enter" key on inputs
 [searchInput, maxPriceInput].forEach(input => {

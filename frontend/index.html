@@ -17,9 +17,12 @@
     </header>
 
     <main class="container">
-        <aside class="sidebar">
+        <aside class="sidebar" id="filterSidebar">
             <div class="filter-card">
-                <h3><i class="fas fa-filter"></i> Filters</h3>
+                <div class="filter-header">
+                    <h3><i class="fas fa-filter"></i> Filters</h3>
+                    <button id="closeFilterBtn" class="close-btn"><i class="fas fa-times"></i></button>
+                </div>
                 <div class="filter-group">
                     <label>Search Query</label>
                     <div class="search-box">
@@ -68,6 +71,7 @@
         <section class="results-section">
             <div class="results-header">
                 <h2 id="resultsCount">Loading products...</h2>
+                <button id="mobileFilterBtn" class="mobile-filter-btn"><i class="fas fa-filter"></i> Filters</button>
             </div>
             
             <div id="loader" class="loader-container">

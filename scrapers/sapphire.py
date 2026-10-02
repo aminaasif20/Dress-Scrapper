@@ -2,6 +2,8 @@ import logging
 from typing import List, Dict, Any
 import sys
 import os
+import requests
+from bs4 import BeautifulSoup
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scrapers.base_scraper import BaseScraper
@@ -10,51 +12,76 @@ logger = logging.getLogger(__name__)
 
 class SapphireScraper(BaseScraper):
     """
-    Scraper for Sapphire.
+    Scraper for Sapphire using HTML parsing (Demandware/SFRA).
     """
     def __init__(self):
         super().__init__(brand_name="Sapphire", base_url="https://pk.sapphireonline.pk")
-        self.products_json_url = f"{self.base_url}/products.json?limit=250"
+        self.collections = [
+            "/collections/ready-to-wear",
+            "/collections/woman" # Unstitched is often mapped here
+        ]
 
     def scrape(self) -> List[Dict[str, Any]]:
-        logger.info(f"Starting scrape for {self.brand_name}")
+        logger.info(f"Starting HTML scrape for {self.brand_name}")
         products_data = []
-        try:
-            data = self.fetch_json(self.products_json_url)
-            products = data.get("products", [])
-            
-            for prod in products:
-                title = prod.get("title", "")
-                handle = prod.get("handle", "")
-                product_url = f"{self.base_url}/products/{handle}"
-                tags = prod.get("tags", [])
-                
-                variants = prod.get("variants", [])
-                if not variants:
+        
+        for collection in self.collections:
+            url = f"{self.base_url}{collection}"
+            try:
+                self._delay()
+                response = self.session.get(url, timeout=15)
+                if response.status_code != 200:
+                    logger.warning(f"Failed to fetch {url}, status code {response.status_code}")
                     continue
                 
-                main_variant = variants[0]
-                price = main_variant.get("price")
-                compare_at_price = main_variant.get("compare_at_price")
-                available = main_variant.get("available", False)
+                soup = BeautifulSoup(response.text, 'html.parser')
+                tiles = soup.find_all(class_='product-tile')
                 
-                images = prod.get("images", [])
-                image_url = images[0].get("src") if images else ""
-
-                products_data.append({
-                    "brand": self.brand_name,
-                    "title": title,
-                    "price": price,
-                    "original_price": compare_at_price,
-                    "availability": available,
-                    "product_url": product_url,
-                    "image_url": image_url,
-                    "tags": ", ".join(tags)
-                })
-            
-            logger.info(f"Successfully scraped {len(products_data)} products from {self.brand_name}")
-            return products_data
-        
-        except Exception as e:
-            logger.error(f"Failed to scrape {self.brand_name}: {e}")
-            return []
+                for tile in tiles:
+                    # Title
+                    title_elem = tile.find(class_='pdp-link')
+                    title = title_elem.text.strip() if title_elem else "Sapphire Dress"
+                    
+                    # URL
+                    link_elem = tile.find('a', class_='link')
+                    product_url = f"{self.base_url}{link_elem['href']}" if link_elem and link_elem.get('href') else url
+                    
+                    # Image
+                    img_elem = tile.find('img', class_='tile-image')
+                    image_url = ""
+                    if img_elem:
+                        image_url = img_elem.get('data-src') or img_elem.get('src', '')
+                    
+                    # Price
+                    price_elem = tile.find(class_='value cc-price')
+                    price = 0.0
+                    if price_elem and price_elem.get('content'):
+                        try:
+                            price = float(price_elem.get('content'))
+                        except ValueError:
+                            pass
+                            
+                    # If price is 0, skip
+                    if not price:
+                        continue
+                    
+                    # Tags
+                    subtitle = tile.find(class_='subtitle')
+                    tags = subtitle.text.strip() if subtitle else collection.split('/')[-1]
+                    
+                    products_data.append({
+                        "brand": self.brand_name,
+                        "title": title,
+                        "price": price,
+                        "original_price": None, 
+                        "availability": True,
+                        "product_url": product_url,
+                        "image_url": image_url,
+                        "tags": tags
+                    })
+                    
+            except Exception as e:
+                logger.error(f"Error scraping {url}: {e}")
+                
+        logger.info(f"Successfully scraped {len(products_data)} products from {self.brand_name}")
+        return products_data
