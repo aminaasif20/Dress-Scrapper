@@ -14,7 +14,7 @@ class NishatScraper(BaseScraper):
     """
     def __init__(self):
         super().__init__(brand_name="Nishat Linen", base_url="https://nishatlinen.com")
-        self.products_json_url = f"{self.base_url}/products.json?limit=250"
+        self.products_json_url = f"{self.base_url}/products.json?limit=350"
 
     def scrape(self) -> List[Dict[str, Any]]:
         logger.info(f"Starting scrape for {self.brand_name}")

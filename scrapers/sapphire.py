@@ -2,7 +2,6 @@ import logging
 from typing import List, Dict, Any
 import sys
 import os
-import requests
 from bs4 import BeautifulSoup
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,7 +17,7 @@ class SapphireScraper(BaseScraper):
         super().__init__(brand_name="Sapphire", base_url="https://pk.sapphireonline.pk")
         self.collections = [
             "/collections/ready-to-wear",
-            "/collections/woman" # Unstitched is often mapped here
+            "/collections/woman"
         ]
 
     def scrape(self) -> List[Dict[str, Any]]:
@@ -53,18 +52,28 @@ class SapphireScraper(BaseScraper):
                         image_url = img_elem.get('data-src') or img_elem.get('src', '')
                     
                     # Price
-                    price_elem = tile.find(class_='value cc-price')
                     price = 0.0
-                    if price_elem and price_elem.get('content'):
+                    original_price = None
+                    
+                    # Sale price usually in .sales .value
+                    sale_elem = tile.select_one('.sales .value') or tile.select_one('.value.cc-price')
+                    if sale_elem and sale_elem.get('content'):
                         try:
-                            price = float(price_elem.get('content'))
+                            price = float(sale_elem.get('content'))
                         except ValueError:
                             pass
                             
-                    # If price is 0, skip
+                    # Original price usually in .strike-through .value or .list .value
+                    orig_elem = tile.select_one('.strike-through .value') or tile.select_one('.list .value')
+                    if orig_elem and orig_elem.get('content'):
+                        try:
+                            original_price = float(orig_elem.get('content'))
+                        except ValueError:
+                            pass
+                            
                     if not price:
                         continue
-                    
+                        
                     # Tags
                     subtitle = tile.find(class_='subtitle')
                     tags = subtitle.text.strip() if subtitle else collection.split('/')[-1]
@@ -73,7 +82,7 @@ class SapphireScraper(BaseScraper):
                         "brand": self.brand_name,
                         "title": title,
                         "price": price,
-                        "original_price": None, 
+                        "original_price": original_price, 
                         "availability": True,
                         "product_url": product_url,
                         "image_url": image_url,

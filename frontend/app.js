@@ -64,10 +64,38 @@ function displayProducts(data) {
     resultsCount.textContent = `Found ${data.total_results} Products`;
     
     const productsHtml = data.results.map(product => {
-        const hasDiscount = product.is_on_sale && product.original_price > product.price;
+        let actualPrice = product.price;
+        let actualOriginal = product.original_price;
+
+        // Fix for Nishat Linen returning prices divided by 100 (e.g., 8 instead of 800)
+        if (product.brand === 'Nishat Linen' && actualPrice < 200) {
+            actualPrice = actualPrice * 100;
+            if (actualOriginal < 200) actualOriginal = actualOriginal * 100;
+        }
+
+        const hasDiscount = product.is_on_sale && actualOriginal > actualPrice;
         const discountPercentage = hasDiscount 
-            ? Math.round(((product.original_price - product.price) / product.original_price) * 100)
+            ? Math.round(((actualOriginal - actualPrice) / actualOriginal) * 100)
             : 0;
+
+        // Determine if it's a loose fabric / per meter item
+        const titleLower = (product.title || '').toLowerCase();
+        const isLooseFabric = titleLower.includes('freedom to buy') || 
+                              titleLower.includes('loose fabric') || 
+                              titleLower.includes('per meter') ||
+                              (product.brand === 'Nishat Linen' && actualPrice <= 1500); // likely per meter price
+
+        let looseFabricHtml = '';
+        if (isLooseFabric) {
+            looseFabricHtml = `
+                <div class="fabric-est-prices" style="margin: 10px 0; padding: 10px; background: #f8f9fa; border-radius: 8px; font-size: 0.85rem; color: #555; border: 1px dashed #ccc;">
+                    <div style="font-weight: 600; margin-bottom: 6px; color: #222;"><i class="fas fa-calculator" style="color: #666;"></i> Estimated Suit Price</div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>1-Piece (2.5-3m):</span> <strong>${formatPKR(actualPrice * 2.5)} - ${formatPKR(actualPrice * 3)}</strong></div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>2-Piece (4.5-5m):</span> <strong>${formatPKR(actualPrice * 4.5)} - ${formatPKR(actualPrice * 5)}</strong></div>
+                    <div style="display: flex; justify-content: space-between;"><span>3-Piece (7-8m):</span> <strong>${formatPKR(actualPrice * 7)} - ${formatPKR(actualPrice * 8)}</strong></div>
+                </div>
+            `;
+        }
 
         return `
             <div class="product-card">
@@ -82,9 +110,11 @@ function displayProducts(data) {
                 <div class="product-info">
                     <h3 class="product-title" title="${product.title}">${product.title}</h3>
                     <div class="product-price-wrapper">
-                        <span class="price">${formatPKR(product.price)}</span>
-                        ${hasDiscount ? `<span class="original-price">${formatPKR(product.original_price)}</span>` : ''}
+                        <span class="price">${formatPKR(actualPrice)}</span>
+                        ${isLooseFabric ? '<span style="font-size: 0.8rem; color: #777; margin-left: 5px;">/ meter</span>' : ''}
+                        ${hasDiscount ? `<span class="original-price">${formatPKR(actualOriginal)}</span>` : ''}
                     </div>
+                    ${looseFabricHtml}
                     <a href="${product.product_url}" target="_blank" rel="noopener noreferrer" class="view-btn">
                         View on Store
                     </a>

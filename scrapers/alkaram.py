@@ -19,7 +19,7 @@ class AlkaramScraper(BaseScraper):
     def __init__(self):
         # We start with the /products.json endpoint as it's a common Shopify pattern.
         super().__init__(brand_name="Alkaram Studio", base_url="https://www.alkaramstudio.com")
-        self.products_json_url = f"{self.base_url}/products.json?limit=250"
+        self.products_json_url = f"{self.base_url}/products.json?limit=350"
 
     def scrape(self) -> List[Dict[str, Any]]:
         logger.info(f"Starting scrape for {self.brand_name}")
